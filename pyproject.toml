@@ -1,0 +1,16 @@
+[project]
+name = "swissknife"
+version = "0.1.0"
+description = "A general purpose API."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+serve = "main:app"
