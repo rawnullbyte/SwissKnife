@@ -12,6 +12,8 @@ def discover_routers() -> list[APIRouter]:
     for module_dir in sorted(Path(__file__).parent.iterdir()):
         if not module_dir.is_dir():
             continue
+        if module_dir.name.endswith(".disabled"):
+            continue
         if module_dir.name.startswith("_"):
             continue
         if not (module_dir / "router.py").exists():
