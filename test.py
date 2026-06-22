@@ -10,6 +10,12 @@ def sendRequest(method, path, **kwargs):
     return r
 
 r = sendRequest(
+    httpx.get,
+    "",
+)
+
+# Auth
+r = sendRequest(
     httpx.post,
     "auth/register",
     json={
@@ -34,4 +40,66 @@ r = sendRequest(
     headers={
         "authorization": token
     }    
+)
+
+# Pastes
+r = sendRequest(
+    httpx.post,
+    "pastes/",
+    headers={"authorization": token},
+    json={
+        "content": "hello world",
+        "visibility": "public"
+    }
+)
+paste_id = r.json()["id"]
+
+r = sendRequest(
+    httpx.post,
+    "pastes/",
+    headers={"authorization": token},
+    json={
+        "content": "unlisted paste",
+        "visibility": "unlisted"
+    }
+)
+
+r = sendRequest(
+    httpx.post,
+    "pastes/",
+    headers={"authorization": token},
+    json={
+        "content": "secret paste",
+        "visibility": "private"
+    }
+)
+
+r = sendRequest(
+    httpx.get,
+    "pastes/?page=1",
+    headers={"authorization": token},
+)
+
+r = sendRequest(
+    httpx.get,
+    "pastes/?page=1&only_own=true",
+    headers={"authorization": token},
+)
+
+r = sendRequest(
+    httpx.get,
+    f"pastes/{paste_id}",
+    headers={"authorization": token},
+)
+
+r = sendRequest(
+    httpx.delete,
+    f"pastes/{paste_id}",
+    headers={"authorization": token},
+)
+
+r = sendRequest(
+    httpx.get,
+    f"pastes/{paste_id}",
+    headers={"authorization": token},
 )

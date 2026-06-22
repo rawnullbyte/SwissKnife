@@ -2,23 +2,37 @@ from __future__ import annotations
 
 import secrets
 import sqlite3
+import uuid
 from dataclasses import dataclass
 from hashlib import pbkdf2_hmac
 from hmac import compare_digest
-from pathlib import Path
 
 _ITERATIONS = 600_000
 
 @dataclass(frozen=True)
 class User:
-    id: int
+    id: str
     username: str
+
+
+@dataclass(frozen=True)
+class Paste:
+    id: str
+    owner_id: str
+    content: str
+    visibility: str
+    created_at: str
 
 
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect("database/swissknife.sqlite3")
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _new_user_id() -> str:
+    return str(uuid.uuid4())
 
 
 def init_db() -> None:
@@ -26,9 +40,21 @@ def init_db() -> None:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id TEXT PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pastes (
+                id TEXT PRIMARY KEY,
+                owner_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                visibility TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
             )
             """
         )
@@ -54,12 +80,13 @@ def verify_password(password: str, stored_hash: str) -> bool:
 
 def create_user(username: str, password: str) -> User:
     init_db()
+    user_id = _new_user_id()
     with _connect() as conn:
-        cursor = conn.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, hash_password(password)),
+        conn.execute(
+            "INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)",
+            (user_id, username, hash_password(password)),
         )
-        return User(id=int(cursor.lastrowid), username=username)
+        return User(id=user_id, username=username)
 
 
 def authenticate_user(username: str, password: str) -> User | None:
@@ -74,10 +101,10 @@ def authenticate_user(username: str, password: str) -> User | None:
         return None
     if not verify_password(password, str(row["password_hash"])):
         return None
-    return User(id=int(row["id"]), username=str(row["username"]))
+    return User(id=str(row["id"]), username=str(row["username"]))
 
 
-def get_user(user_id: int) -> User | None:
+def get_user(user_id: str) -> User | None:
     init_db()
     with _connect() as conn:
         row = conn.execute(
@@ -87,4 +114,69 @@ def get_user(user_id: int) -> User | None:
 
     if row is None:
         return None
-    return User(id=int(row["id"]), username=str(row["username"]))
+    return User(id=str(row["id"]), username=str(row["username"]))
+
+
+def _row_to_paste(row: sqlite3.Row) -> Paste:
+    return Paste(
+        id=str(row["id"]),
+        owner_id=str(row["owner_id"]),
+        content=str(row["content"]),
+        visibility=str(row["visibility"]),
+        created_at=str(row["created_at"]),
+    )
+
+
+def create_paste(owner_id: str, content: str, visibility: str) -> Paste:
+    init_db()
+    paste_id = str(uuid.uuid4())
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO pastes (id, owner_id, content, visibility) VALUES (?, ?, ?, ?)",
+            (paste_id, owner_id, content, visibility),
+        )
+        row = conn.execute(
+            "SELECT id, owner_id, content, visibility, created_at FROM pastes WHERE id = ?",
+            (paste_id,), # comma after paste_id because (x) == x, not a tupple, (x,) makes it a tupple
+        ).fetchone()
+    assert row is not None
+    return _row_to_paste(row)
+
+
+def list_pastes(owner_id: str, page: int, only_own: bool, per_page: int = 25) -> list[Paste]:
+    init_db()
+    offset = (page - 1) * per_page # -1 because we count from 0 and not 1, so page 1 = entries 0-25
+    with _connect() as conn:
+        if only_own:
+            rows = conn.execute(
+                "SELECT id, owner_id, content, visibility, created_at FROM pastes WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (owner_id, per_page, offset),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, owner_id, content, visibility, created_at FROM pastes WHERE visibility = 'public' OR owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (owner_id, per_page, offset),
+            ).fetchall()
+    return [_row_to_paste(row) for row in rows]
+
+
+def get_paste(owner_id: str, paste_id: str) -> Paste | None:
+    init_db()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id, owner_id, content, visibility, created_at FROM pastes WHERE id = ? AND (owner_id = ? OR visibility IN ('public', 'unlisted'))",
+            (paste_id, owner_id),
+        ).fetchone()
+    if row is None:
+        return None
+    return _row_to_paste(row)
+
+
+def delete_paste(owner_id: str, paste_id: str) -> bool:
+    init_db()
+    with _connect() as conn:
+        cursor = conn.execute(
+            "DELETE FROM pastes WHERE id = ? AND owner_id = ?",
+            (paste_id, owner_id),
+        )
+    return cursor.rowcount > 0

@@ -8,7 +8,7 @@ app = FastAPI(
     title="SwissKnife API",
     description="A general purpose API.",
     version="0.1.0",
-    docs_url="/",
+    docs_url="/docs",
 )
 
 for router in discover_routers():

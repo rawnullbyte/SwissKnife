@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/hello", tags=["hello"])
+router = APIRouter()
 
 
-@router.get("")
+@router.get("/")
 def hello() -> dict[str, str]:
-    return {"message": "Hello, World!"}
+    return {"detail": "Hello, World!"}

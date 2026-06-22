@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from database.db import User, authenticate_user, create_user, get_user, init_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-_sessions: dict[str, int] = {}
+_sessions: dict[str, str] = {}
 
 
 class Credentials(BaseModel):
@@ -19,7 +19,7 @@ class Credentials(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: int
+    id: str
     username: str
 
 
@@ -38,7 +38,7 @@ def _issue_token(user: User) -> TokenResponse:
     return TokenResponse(token=token, user=_user_response(user))
 
 
-def _current_user(authorization: str | None) -> User:
+def _current_user(authorization: Annotated[str | None, Header()] = None) -> User:
     if authorization is None or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
