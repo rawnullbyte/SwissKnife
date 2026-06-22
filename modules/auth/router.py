@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
-from database.db import User, authenticate_user, create_user, get_user, init_db
+from database.db import User, authenticate_user, create_user, get_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 _sessions: dict[str, str] = {}
@@ -62,11 +62,6 @@ def _current_user(authorization: Annotated[str | None, Header()] = None) -> User
         )
 
     return user
-
-
-@router.on_event("startup")
-def startup() -> None:
-    init_db()
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
