@@ -1,5 +1,5 @@
 <h1 align="center">
-    SwissKnife
+    <img width="50%" height="50%" src="https://github.com/user-attachments/assets/34a9dba6-b2ea-430c-ac79-792ccf7a1507" />
 </h1>
 
 <p align="center">
