@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Auto generated documentation is at: <strong>docs</strong>
+  Auto generated documentation is at: <strong>/docs</strong>
 </p>
 
 ---
